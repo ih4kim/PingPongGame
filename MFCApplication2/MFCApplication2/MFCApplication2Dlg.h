@@ -1,6 +1,6 @@
 
 // MFCApplication2Dlg.h : header file
-//
+//hpp comment
 
 #pragma once
 #include <opencv/highgui.h>

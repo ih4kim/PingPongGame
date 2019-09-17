@@ -1,6 +1,6 @@
 
 // MFCApplication2Dlg.cpp : implementation file
-//
+//added comment 
 
 #include "stdafx.h"
 #include "MFCApplication2.h"
