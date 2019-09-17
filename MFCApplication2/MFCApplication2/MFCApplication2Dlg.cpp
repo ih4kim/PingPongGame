@@ -1,6 +1,6 @@
 
 // MFCApplication2Dlg.cpp : implementation file
-//added change to commit
+//
 
 #include "stdafx.h"
 #include "MFCApplication2.h"
@@ -13,12 +13,15 @@
 #define new DEBUG_NEW
 #endif
 
-
 // CAboutDlg dialog used for App About
 using namespace std;
 using namespace cv;
 
+int someIndex = 0;
+Mat matArray[10];
+
 class CAboutDlg : public CDialogEx
+	//sooo this is the inheritance thing, class CAboutDig has all the things that class CDialogEx has (the non-private stuff)
 {
 public:
 	CAboutDlg();
@@ -39,21 +42,8 @@ protected:
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 {
 }
-//add global constants here
 
-Mat imgShow[10];
 CWnd *globalWindow;
-BOOL START = TRUE;
-BOOL isUp = TRUE;
-BOOL isRight = TRUE;
-INT SPEED = 5;
-INT VERTICALVELOCITY = 1;
-INT HORIZONTALVELOCITY = 1;
-Size dimensions = imgShow[0].size();
-INT CURRENTX = 320;
-INT CURRENTY = 240;
-INT RADIUS = 50;
-
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -63,10 +53,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
-
 // CMFCApplication2Dlg dialog
-
-
 
 CMFCApplication2Dlg::CMFCApplication2Dlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MFCAPPLICATION2_DIALOG, pParent)
@@ -74,25 +61,33 @@ CMFCApplication2Dlg::CMFCApplication2Dlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-void CMFCApplication2Dlg::drawMovingCircle(Mat imgShow)
-{
-	edgeHitDetection(CURRENTX, CURRENTY, RADIUS);
-	if (isUp) VERTICALVELOCITY = -1;
-	else VERTICALVELOCITY = 1;
-	if (isRight) HORIZONTALVELOCITY = 1;
-	else HORIZONTALVELOCITY = -1;
-	CURRENTX += SPEED * HORIZONTALVELOCITY;
-	CURRENTY += SPEED * VERTICALVELOCITY;
-
-	circle(imgShow, Point(CURRENTX,CURRENTY), RADIUS, Scalar(0, 0, 255), -1);
+//the different modes..? uh I took them out of the header file because when its in the header file, it has to be called 
+//on an object and idk what to call it on... uh but uh remind me why do people even use header files again?
+//oh yeah i probs need the this thing but uh lemme just get this figured out first
+void grayscale(Mat orig, Mat &image) {
+	cvtColor(orig, image, COLOR_BGR2GRAY, 0);
 }
 
-void CMFCApplication2Dlg::edgeHitDetection(int xPos, int yPos, int radius)
-{
-	if (xPos + radius > 640) isRight = FALSE;
-	else if (xPos - radius < 0) isRight = TRUE;
-	if (yPos + radius > 480) isUp = TRUE;
-	else if (yPos - radius < 0) isUp = FALSE;
+void HSV(Mat orig, Mat &image) {
+	cvtColor(orig, image, COLOR_BGR2HSV, 0);
+}
+
+void CannyFunction(Mat orig, Mat& image) {
+	Mat greyImage, someOther;
+	cvtColor(orig, greyImage, CV_BGR2GRAY, 0);
+	blur(greyImage, image, Size(3, 3), Point(-1, -1), 4);
+	Canny(image, image, 50, 110, 3, 0);
+	//the 50 is the variable from thte scrolly thing and 150 is scrolly thing number * 3
+	//the last 2 param 3 and 0 should stay, just change the 3 and 4th params
+	someOther = Scalar::all(0);
+	image.copyTo(someOther, image);
+}
+
+void ThresholdFunction(Mat hsv_orig, Mat& image) {
+	inRange(hsv_orig,  Scalar(90, 100, 100), Scalar(120, 255, 255), image);
+	//the values are for blue.. we can mb later add some feature that lets you choose whatever colour or smth
+	erode(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	dilate(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
 }
 
 UINT CMFCApplication2Dlg::StartThread(LPVOID param)
@@ -100,8 +95,11 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 	THREADSTRUCT* ts = (THREADSTRUCT*)param;
 	AfxMessageBox(_T("Started thread"));
 	VideoCapture cap(0);
+	//value of 0 is webcam
+
 	Mat original;
 	Mat frame;
+
 	if (!cap.isOpened())
 	{
 		AfxMessageBox(_T("Failed to load video"));
@@ -110,6 +108,8 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 	while (true)
 	{
 		cap >> frame;
+		//pushing the frames into the mat obj
+
 		if (!frame.empty())
 		{
 			original = frame.clone();
@@ -121,12 +121,23 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 		IplImage* image2 = cvCloneImage(&(IplImage)original);
 		ts->_this->DisplayIplImageToPictureBox(image2, vDC,rect);
 		ts->_this->ReleaseDC(vDC);*/
-		imgShow[0] = original;
 
-		ts->_this->drawMovingCircle(imgShow[0]);
+		Mat gaussian;
+		GaussianBlur(original, gaussian, Size(5, 5), 7, 7, 4);
+		for (int i = 1; i <= 5; i++)
+			medianBlur(gaussian, matArray[i], 5);
+		//apply gaussian blur to all of them except when no radio button is selected
 
-		IplImage* image2 = cvCloneImage(&(IplImage)original);
+		matArray[0] = original;
+		grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
+		HSV(matArray[3], matArray[3]);
+		CannyFunction(matArray[4], matArray[4]); //dont need....
+		ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
 
+		IplImage *image2 = cvCloneImage(&(IplImage)matArray[someIndex]);
+		//convert mat to iplimage
+			
+		//all of this here is just some converting iplimage to bitmap thing.... dw about it
 		if (image2 != nullptr)
 		{
 			CWnd* pWnd_ImageTarget;
@@ -144,8 +155,10 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 			bitmapInfo.bmiHeader.biHeight = -image2->height;
 
 			IplImage *tempImage = nullptr;
-
+			
 			if (image2->nChannels == 1)
+				//what does nchannels mean
+				//dw about it
 			{
 				tempImage = cvCreateImage(cvSize(image2->width, image2->height), IPL_DEPTH_8U, 3);
 				cvCvtColor(image2, tempImage, CV_GRAY2BGR);
@@ -166,10 +179,8 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 		frame.release();
 		if (waitKey(30) >= 0) break;
 	}
-	
 	return 0;
 }
-
 
 //void CMFCApplication2Dlg::DisplayIplImageToPictureBox(IplImage* img, CDC* vDC, CRect rect)
 //{
@@ -179,8 +190,6 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 //	pic1.SetBitmap(IplImage2DIB(resize));
 //	cvReleaseImage(&img);
 //}
-
-
 
 void CMFCApplication2Dlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -192,10 +201,12 @@ BEGIN_MESSAGE_MAP(CMFCApplication2Dlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_GRAB, &CMFCApplication2Dlg::OnBnClickedButtonGrab)
-	ON_BN_CLICKED(IDOK, &CMFCApplication2Dlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDC_RADIO1, &CMFCApplication2Dlg::OnBnClickedRadio1)
+	ON_BN_CLICKED(IDC_RADIO2, &CMFCApplication2Dlg::OnBnClickedRadio2)
+	ON_BN_CLICKED(IDC_RADIO3, &CMFCApplication2Dlg::OnBnClickedRadio3)
+	ON_BN_CLICKED(IDC_RADIO4, &CMFCApplication2Dlg::OnBnClickedRadio4)
+	ON_BN_CLICKED(IDC_RADIO5, &CMFCApplication2Dlg::OnBnClickedRadio5)
 END_MESSAGE_MAP()
-
 
 // CMFCApplication2Dlg message handlers
 
@@ -229,7 +240,7 @@ BOOL CMFCApplication2Dlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
-	
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -243,7 +254,6 @@ void CMFCApplication2Dlg::OnSysCommand(UINT nID, LPARAM lParam)
 	else
 	{
 		CDialogEx::OnSysCommand(nID, lParam);
-		
 	}
 }
 
@@ -269,7 +279,6 @@ void CMFCApplication2Dlg::OnPaint()
 
 		// Draw the icon
 		dc.DrawIcon(x, y, m_hIcon);
-		
 	}
 	else
 	{
@@ -295,20 +304,24 @@ void CMFCApplication2Dlg::OnBnClickedButtonGrab()
 }
 
 
-void CMFCApplication2Dlg::OnBnClickedRadioImage1()
-{
-	// TODO: Add your control notification handler code here
+
+
+void CMFCApplication2Dlg::OnBnClickedRadio1(){
+	someIndex = 1; //normal
 }
 
-
-void CMFCApplication2Dlg::OnBnClickedOk()
-{
-	// TODO: Add your control notification handler code here
-	CDialogEx::OnOK();
+void CMFCApplication2Dlg::OnBnClickedRadio2(){
+	someIndex = 2;	//greyscale
 }
 
+void CMFCApplication2Dlg::OnBnClickedRadio3(){
+	someIndex = 3; //hsv
+}
 
-void CMFCApplication2Dlg::OnBnClickedRadio1()
-{
-	// TODO: Add your control notification handler code here
+void CMFCApplication2Dlg::OnBnClickedRadio4(){
+	someIndex = 4; //canny
+}
+
+void CMFCApplication2Dlg::OnBnClickedRadio5(){
+	someIndex = 5; //threshold
 }

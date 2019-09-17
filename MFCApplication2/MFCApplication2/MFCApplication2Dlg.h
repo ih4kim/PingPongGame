@@ -23,8 +23,11 @@ public:
 	} THREADSTRUCT;
 	
 	/*void DisplayIplImageToPictureBox(IplImage* img, CDC* vDC,CRect rect);*/
-	void drawMovingCircle(Mat imgShow);
-	void edgeHitDetection(int xPos, int yPos, int radius);
+
+//	void HSV(Mat orig, Mat image);
+//	void grayscale(Mat orig, Mat image);
+//	void CannyFunction(Mat orig, Mat image);
+
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_MFCAPPLICATION2_DIALOG };
@@ -46,7 +49,10 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedButtonGrab();
-	afx_msg void OnBnClickedRadioImage1();
-	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedRadio1();
+	afx_msg void OnBnClickedRadio2();
+	afx_msg void OnBnClickedRadio3();
+	afx_msg void OnBnClickedRadio4();
+	afx_msg void OnBnClickedRadio5();
+	
 };
