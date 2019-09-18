@@ -22,6 +22,8 @@ public:
 
 	} THREADSTRUCT;
 	
+	void ImageProcessing(Mat matArray[10], Mat original);
+
 	/*void DisplayIplImageToPictureBox(IplImage* img, CDC* vDC,CRect rect);*/
 
 //	void HSV(Mat orig, Mat image);

@@ -1,7 +1,6 @@
 
 // MFCApplication2Dlg.cpp : implementation file
-//added comment 
-//testingBigBranch comment
+
 
 #include "stdafx.h"
 #include "MFCApplication2.h"
@@ -123,17 +122,7 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 		ts->_this->DisplayIplImageToPictureBox(image2, vDC,rect);
 		ts->_this->ReleaseDC(vDC);*/
 
-		Mat gaussian;
-		GaussianBlur(original, gaussian, Size(5, 5), 7, 7, 4);
-		for (int i = 1; i <= 5; i++)
-			medianBlur(gaussian, matArray[i], 5);
-		//apply gaussian blur to all of them except when no radio button is selected
-
-		matArray[0] = original;
-		grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
-		HSV(matArray[3], matArray[3]);
-		CannyFunction(matArray[4], matArray[4]); //dont need....
-		ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
+		ts->_this->ImageProcessing(matArray, original);
 
 		IplImage *image2 = cvCloneImage(&(IplImage)matArray[someIndex]);
 		//convert mat to iplimage
@@ -181,6 +170,24 @@ UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 		if (waitKey(30) >= 0) break;
 	}
 	return 0;
+}
+
+void CMFCApplication2Dlg::ImageProcessing(Mat matArray[10], Mat original)
+{
+	Mat gaussian;
+	GaussianBlur(original, gaussian, Size(5, 5), 7, 7, 4);
+	for (int i = 1; i <= 5; i++)
+		medianBlur(gaussian, matArray[i], 5);
+	//apply gaussian blur to all of them except when no radio button is selected
+
+	matArray[0] = original;
+	grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
+	HSV(matArray[3], matArray[3]);
+	CannyFunction(matArray[4], matArray[4]); //dont need....
+	ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
+
+	//create function that iterates through each pixel in hsv image and find white pixels and floodfill the canny image.
+	//create function that moves ball and deflects off of white pixel
 }
 
 //void CMFCApplication2Dlg::DisplayIplImageToPictureBox(IplImage* img, CDC* vDC, CRect rect)
