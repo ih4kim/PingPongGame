@@ -20,6 +20,18 @@ using namespace cv;
 int someIndex = 0;
 Mat matArray[10];
 
+BOOL START = TRUE;
+BOOL isUp = TRUE;
+BOOL isRight = TRUE;
+INT SPEED = 5;
+INT VERTICALVELOCITY = 1;
+INT HORIZONTALVELOCITY = 1;
+Size dimensions = matArray[0].size();
+INT CURRENTX = 320;
+INT CURRENTY = 240;
+INT RADIUS = 50;
+
+
 class CAboutDlg : public CDialogEx
 	//sooo this is the inheritance thing, class CAboutDig has all the things that class CDialogEx has (the non-private stuff)
 {
@@ -88,6 +100,70 @@ void ThresholdFunction(Mat hsv_orig, Mat& image) {
 	//the values are for blue.. we can mb later add some feature that lets you choose whatever colour or smth
 	erode(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
 	dilate(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+}
+
+void CMFCApplication2Dlg::moveCircle(Mat imgShow)
+{
+	edgeHitDetection(CURRENTX, CURRENTY, RADIUS);
+	if (isUp) VERTICALVELOCITY = -1;
+	else VERTICALVELOCITY = 1;
+	if (isRight) HORIZONTALVELOCITY = 1;
+	else HORIZONTALVELOCITY = -1;
+	CURRENTX += SPEED * HORIZONTALVELOCITY;
+	CURRENTY += SPEED * VERTICALVELOCITY;
+
+	circle(imgShow, Point(CURRENTX, CURRENTY), RADIUS, Scalar(0, 0, 255), -1);
+}
+
+
+void CMFCApplication2Dlg::edgeHitDetection(int xPos, int yPos, int radius)
+{
+	if (xPos + radius > 640) isRight = FALSE;
+	else if (xPos - radius < 0) isRight = TRUE;
+	if (yPos + radius > 480) isUp = TRUE;
+	else if (yPos - radius < 0) isUp = FALSE;
+}
+
+void CMFCApplication2Dlg::objectDetection(int xPos, int yPos, int radius, Mat thresholdImage)
+{
+	int yPosition = 0, xPosition = 0;
+	if ((yPosition - radius) <= 0)
+		yPosition = 0;
+	else
+		yPosition -= radius;
+	if ((xPosition - radius) <= 0)
+		xPosition = 0;
+	else
+		xPosition -= radius;
+
+	Rect box(xPosition, yPosition, radius * 2, radius * 2);
+	Mat roi(thresholdImage, box);
+
+	Rect leftSide(0, 0, 1, roi.rows);
+	Rect topSide(0, 0, roi.cols,1);
+	Rect rightSide(roi.cols-1, 0, 1, roi.rows);
+	Rect bottomSide(0, roi.rows-1, roi.cols, 1);
+
+
+	if (checkWhitePixel(roi, leftSide)) isRight = TRUE;
+	else if (checkWhitePixel(roi, rightSide)) isRight = FALSE;
+	else if (checkWhitePixel(roi, topSide)) isUp = FALSE;
+	else if (checkWhitePixel(roi, bottomSide)) isUp = TRUE;
+	
+	roi.release();
+}
+
+bool CMFCApplication2Dlg::checkWhitePixel(Mat roi, Rect region)
+{
+	Mat edge(roi, region);
+	Scalar m;
+	m = mean(edge);
+	double result = m[0];
+	edge.release();
+	if (result > 0)
+		return true;
+	else
+		return false;
 }
 
 UINT CMFCApplication2Dlg::StartThread(LPVOID param)
@@ -186,8 +262,13 @@ void CMFCApplication2Dlg::ImageProcessing(Mat matArray[10], Mat original)
 	CannyFunction(matArray[4], matArray[4]); //dont need....
 	ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
 
+	edgeHitDetection(CURRENTX, CURRENTY, RADIUS);
+	objectDetection(CURRENTX, CURRENTY, RADIUS, matArray[5]);
+	moveCircle(matArray[0]);
+	
 	//create function that iterates through each pixel in hsv image and find white pixels and floodfill the canny image.
 	//create function that moves ball and deflects off of white pixel
+	
 }
 
 //void CMFCApplication2Dlg::DisplayIplImageToPictureBox(IplImage* img, CDC* vDC, CRect rect)

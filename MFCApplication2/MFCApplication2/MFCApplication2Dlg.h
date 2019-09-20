@@ -14,7 +14,11 @@ class CMFCApplication2Dlg : public CDialogEx
 {
 // Construction
 public:
-	CMFCApplication2Dlg(CWnd* pParent = nullptr);	// standard constructor
+	CMFCApplication2Dlg(CWnd* pParent = nullptr);
+	
+	
+
+	// standard constructor
 	static UINT StartThread (LPVOID param);
 	typedef struct THREADSTRUCT
 	{
@@ -23,7 +27,11 @@ public:
 	} THREADSTRUCT;
 	
 	void ImageProcessing(Mat matArray[10], Mat original);
+	void moveCircle(Mat imgShow);
+	void edgeHitDetection(int xPos, int yPos, int radius);
+	void objectDetection(int xPos, int yPos, int radius, Mat thresholdImage);
 
+	bool checkWhitePixel(Mat roi, Rect region);
 	/*void DisplayIplImageToPictureBox(IplImage* img, CDC* vDC,CRect rect);*/
 
 //	void HSV(Mat orig, Mat image);
