@@ -26,9 +26,12 @@ public:
 
 	/*void DisplayIplImageToPictureBox(IplImage* img, CDC* vDC,CRect rect);*/
 
-//	void HSV(Mat orig, Mat image);
-//	void grayscale(Mat orig, Mat image);
-//	void CannyFunction(Mat orig, Mat image);
+	void HSV(Mat orig, Mat &image);
+	void grayscale(Mat orig, Mat& image);
+	void CannyFunction(Mat orig, Mat &image);
+	void ThresholdFunction(Mat hsv_image, Mat& image);
+
+	void getBlueRectangle(Mat thresholdImage, Mat cannyImage, Mat &image);
 
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
@@ -57,4 +60,5 @@ public:
 	afx_msg void OnBnClickedRadio4();
 	afx_msg void OnBnClickedRadio5();
 	
+	afx_msg void OnBnClickedRadio6();
 };

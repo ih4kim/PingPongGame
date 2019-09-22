@@ -20,6 +20,8 @@ using namespace cv;
 int someIndex = 0;
 Mat matArray[10];
 
+
+
 class CAboutDlg : public CDialogEx
 	//sooo this is the inheritance thing, class CAboutDig has all the things that class CDialogEx has (the non-private stuff)
 {
@@ -64,31 +66,76 @@ CMFCApplication2Dlg::CMFCApplication2Dlg(CWnd* pParent /*=nullptr*/)
 //the different modes..? uh I took them out of the header file because when its in the header file, it has to be called 
 //on an object and idk what to call it on... uh but uh remind me why do people even use header files again?
 //oh yeah i probs need the this thing but uh lemme just get this figured out first
-void grayscale(Mat orig, Mat &image) {
+void CMFCApplication2Dlg::grayscale(Mat orig, Mat &image) {
 	cvtColor(orig, image, COLOR_BGR2GRAY, 0);
 }
 
-void HSV(Mat orig, Mat &image) {
+void CMFCApplication2Dlg::HSV(Mat orig, Mat &image) {
 	cvtColor(orig, image, COLOR_BGR2HSV, 0);
 }
 
-void CannyFunction(Mat orig, Mat& image) {
+void CMFCApplication2Dlg::CannyFunction(Mat orig, Mat& image) {
 	Mat greyImage, someOther;
 	cvtColor(orig, greyImage, CV_BGR2GRAY, 0);
-	blur(greyImage, image, Size(3, 3), Point(-1, -1), 4);
+	//blur(greyImage, image, Size(3, 3), Point(-1, -1), 4);
 	Canny(image, image, 50, 110, 3, 0);
 	//the 50 is the variable from thte scrolly thing and 150 is scrolly thing number * 3
 	//the last 2 param 3 and 0 should stay, just change the 3 and 4th params
 	someOther = Scalar::all(0);
 	image.copyTo(someOther, image);
+	//dilate(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	greyImage.release();
+	someOther.release();
 }
 
-void ThresholdFunction(Mat hsv_orig, Mat& image) {
+void CMFCApplication2Dlg::ThresholdFunction(Mat hsv_orig, Mat& image) {
 	inRange(hsv_orig,  Scalar(90, 100, 100), Scalar(120, 255, 255), image);
 	//the values are for blue.. we can mb later add some feature that lets you choose whatever colour or smth
 	erode(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
-	dilate(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+  	dilate(image, image, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
 }
+
+void CMFCApplication2Dlg::getBlueRectangle(Mat thresholdImage, Mat cannyImage, Mat &image) {
+	Mat thresh, cannyy;
+	cannyImage.copyTo(cannyy);
+	image = matArray[5];
+	//dilate the canny image to make the lines thicker and erode the threshold image to make sure only super blue objects are detected
+	//don't really need to dilate after commenting out the blur function
+	//dilate(cannyImage, cannyy, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	
+	dilate(cannyImage, cannyy, getStructuringElement(MORPH_RECT, Size(3, 3)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+
+	dilate(cannyy, cannyy, getStructuringElement(MORPH_RECT, Size(3, 3)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	//dilate(cannyy, cannyy, kernel, Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	erode(thresholdImage, thresh, getStructuringElement(MORPH_ELLIPSE, Size(7, 7), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
+	Point whitePoint;
+	Mat mask(thresholdImage.rows +2, thresholdImage.cols +2, CV_8U);
+	Mat finalMask(thresholdImage.rows + 2, thresholdImage.cols + 2, CV_8U);
+	finalMask = Scalar(0);
+	Rect roi(1, 1, thresholdImage.cols, thresholdImage.rows);
+	for (int rows = 0; rows <= thresholdImage.rows; rows++){
+		for (int cols = 0; cols <= thresholdImage.cols; cols++) {
+			if (thresh.at<uchar>(rows, cols) == uchar(255)) {
+				whitePoint = Point(rows, cols);
+				floodFill(cannyy, mask, whitePoint, Scalar(255), 0, Scalar(), Scalar());
+				floodFill(thresh, whitePoint, Scalar(0));
+
+				inRange(mask, Scalar(1), Scalar(1), mask); 
+				add(mask, finalMask, finalMask);//
+				mask = Scalar(0);
+			}
+		}
+	}
+	Mat imagee(finalMask, roi);
+	image = imagee;
+	imagee.release();
+	thresh.release();
+	cannyy.release();
+	mask.release();
+	finalMask.release();
+}
+
+
 
 UINT CMFCApplication2Dlg::StartThread(LPVOID param)
 {
@@ -181,12 +228,19 @@ void CMFCApplication2Dlg::ImageProcessing(Mat matArray[10], Mat original)
 	//apply gaussian blur to all of them except when no radio button is selected
 
 	matArray[0] = original;
-	grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
+	//grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
 	HSV(matArray[3], matArray[3]);
 	CannyFunction(matArray[4], matArray[4]); //dont need....
 	ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
+	if (someIndex == 6)
+		getBlueRectangle(matArray[5], matArray[4], matArray[6]);
 
 	//create function that iterates through each pixel in hsv image and find white pixels and floodfill the canny image.
+// soooo what this is saying is uh
+	//from the threshold function, get some really white point so like erode it alot so only super blue parts are shown
+	//iterate through each pixel to find the white pixel
+	//and then dilate the canny function and use that point to flood fill
+	//create a new mat object, put it in the matarray in some index, and thats gonna be the output of the floodfilled canny image
 	//create function that moves ball and deflects off of white pixel
 }
 
@@ -214,6 +268,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication2Dlg, CDialogEx)
 	ON_BN_CLICKED(IDC_RADIO3, &CMFCApplication2Dlg::OnBnClickedRadio3)
 	ON_BN_CLICKED(IDC_RADIO4, &CMFCApplication2Dlg::OnBnClickedRadio4)
 	ON_BN_CLICKED(IDC_RADIO5, &CMFCApplication2Dlg::OnBnClickedRadio5)
+	ON_BN_CLICKED(IDC_RADIO6, &CMFCApplication2Dlg::OnBnClickedRadio6)
 END_MESSAGE_MAP()
 
 // CMFCApplication2Dlg message handlers
@@ -332,4 +387,10 @@ void CMFCApplication2Dlg::OnBnClickedRadio4(){
 
 void CMFCApplication2Dlg::OnBnClickedRadio5(){
 	someIndex = 5; //threshold
+}
+
+
+void CMFCApplication2Dlg::OnBnClickedRadio6()
+{
+	someIndex = 6; //getting the blue rectangle from the canny + threshold images
 }
