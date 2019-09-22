@@ -112,7 +112,7 @@ void CMFCApplication2Dlg::moveCircle(Mat imgShow)
 	CURRENTX += SPEED * HORIZONTALVELOCITY;
 	CURRENTY += SPEED * VERTICALVELOCITY;
 
-	circle(imgShow, Point(CURRENTX, CURRENTY), RADIUS, Scalar(0, 0, 255), -1);
+	circle(imgShow, Point(CURRENTX, CURRENTY), RADIUS, Scalar(255, 255, 255), -1);
 }
 
 
@@ -126,15 +126,14 @@ void CMFCApplication2Dlg::edgeHitDetection(int xPos, int yPos, int radius)
 
 void CMFCApplication2Dlg::objectDetection(int xPos, int yPos, int radius, Mat thresholdImage)
 {
-	int yPosition = 0, xPosition = 0;
-	if ((yPosition - radius) <= 0)
-		yPosition = 0;
-	else
-		yPosition -= radius;
-	if ((xPosition - radius) <= 0)
-		xPosition = 0;
-	else
-		xPosition -= radius;
+	int yPosition = yPos, xPosition = xPos;
+	if ((yPosition - radius) < 0) yPosition = 0;
+	else if ((yPosition + radius) > 480) yPosition = 380;
+	else yPosition -= radius;
+	
+	if ((xPosition - radius) < 0) xPosition = 0;
+	else if ((xPosition + radius) > 640) xPosition = 540;
+	else xPosition -= radius;
 
 	Rect box(xPosition, yPosition, radius * 2, radius * 2);
 	Mat roi(thresholdImage, box);
@@ -264,7 +263,7 @@ void CMFCApplication2Dlg::ImageProcessing(Mat matArray[10], Mat original)
 
 	edgeHitDetection(CURRENTX, CURRENTY, RADIUS);
 	objectDetection(CURRENTX, CURRENTY, RADIUS, matArray[5]);
-	moveCircle(matArray[0]);
+	moveCircle(matArray[5]);
 	
 	//create function that iterates through each pixel in hsv image and find white pixels and floodfill the canny image.
 	//create function that moves ball and deflects off of white pixel
