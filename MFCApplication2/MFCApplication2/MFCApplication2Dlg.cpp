@@ -98,7 +98,6 @@ void CMFCApplication2Dlg::ThresholdFunction(Mat hsv_orig, Mat& image) {
 void CMFCApplication2Dlg::getBlueRectangle(Mat thresholdImage, Mat cannyImage, Mat &image) {
 	Mat thresh, cannyy;
 	cannyImage.copyTo(cannyy);
-	image = matArray[5];
 	//dilate the canny image to make the lines thicker and erode the threshold image to make sure only super blue objects are detected
 	//don't really need to dilate after commenting out the blur function
 	//dilate(cannyImage, cannyy, getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(-1, -1)), Point(-1, -1), 1, 0, morphologyDefaultBorderValue());
@@ -113,26 +112,89 @@ void CMFCApplication2Dlg::getBlueRectangle(Mat thresholdImage, Mat cannyImage, M
 	Mat finalMask(thresholdImage.rows + 2, thresholdImage.cols + 2, CV_8U);
 	finalMask = Scalar(0);
 	Rect roi(1, 1, thresholdImage.cols, thresholdImage.rows);
-	for (int rows = 0; rows <= thresholdImage.rows; rows++){
-		for (int cols = 0; cols <= thresholdImage.cols; cols++) {
-			if (thresh.at<uchar>(rows, cols) == uchar(255)) {
-				whitePoint = Point(rows, cols);
-				floodFill(cannyy, mask, whitePoint, Scalar(255), 0, Scalar(), Scalar());
-				floodFill(thresh, whitePoint, Scalar(0));
 
-				inRange(mask, Scalar(1), Scalar(1), mask); 
-				add(mask, finalMask, finalMask);//
-				mask = Scalar(0);
+	for (int r = 0; r < thresh.rows/2; r+=2) {
+		UINT8* ptr = thresh.ptr<UINT8>(r);
+		UINT8* ptrToCanny = cannyy.ptr <UINT8>(r);
+
+		for (int c = 0; c < thresh.cols/2; c+=2) {
+			if (ptr[c] == 255 && ptrToCanny[c] == 0) {
+				whitePoint = Point(c, r);
+				floodFill(cannyy, mask, whitePoint, Scalar(255));
+				floodFill(thresh, whitePoint, Scalar(0));
+				inRange(mask, Scalar(1), Scalar(1), mask);
+				add(mask, finalMask, finalMask);
+				//mask = Scalar(0);
+				//waitKey(100);
 			}
 		}
 	}
-	Mat imagee(finalMask, roi);
-	image = imagee;
-	imagee.release();
-	thresh.release();
-	cannyy.release();
-	mask.release();
-	finalMask.release();
+	 
+	if (finalMask.empty())
+	{
+		Mat black(thresholdImage.rows, thresholdImage.cols, CV_8U);
+		image = black;
+		black.release();
+	}
+	else
+	{
+	/* this uses too much memory... so we tried the above code which uses pointers instead
+
+		int channels = thresh.channels();
+		int nRows = thresh.rows;
+		int nCols = thresh.cols * channels;
+
+		if (thresh.isContinuous())
+		{
+			nCols *= nRows;
+			nRows = 1;
+		}
+		int realJ = 0;
+		int realI = 0;
+		UINT8* p;
+		for (int i = 0; i < nRows; ++i)
+		{
+			p = thresh.ptr<UINT8>(i);
+			for (int j = 0; j < nCols; ++j)
+			{
+				if (realJ > 640) {
+					realJ = 0;
+					realI++;
+				}
+				if (p[j] == 255) {
+					whitePoint = Point(realI, realJ);
+					floodFill(cannyy, mask, whitePoint, Scalar(255));
+					floodFill(thresh, whitePoint, Scalar(0));
+					inRange(mask, Scalar(1), Scalar(1), mask);
+					add(mask, finalMask, finalMask);
+					mask = Scalar(0);
+				}
+				realJ++;
+
+			}
+		}*/
+		/*
+		for (int rows = 0; rows <= thresholdImage.rows; rows++){
+			for (int cols = 0; cols <= thresholdImage.cols; cols++) {
+				if (thresh.at<uchar>(rows, cols) == uchar(255)) {
+					whitePoint = Point(rows, cols);
+					floodFill(cannyy, mask, whitePoint, Scalar(255), 0, Scalar(), Scalar());
+					floodFill(thresh, whitePoint, Scalar(0));
+
+					inRange(mask, Scalar(1), Scalar(1), mask);
+					add(mask, finalMask, finalMask);//
+					mask = Scalar(0);
+				}
+			}
+		}*/
+		Mat imagee(finalMask, roi);
+		image = imagee;
+		imagee.release();
+		thresh.release();
+		cannyy.release();
+		mask.release();
+		finalMask.release();
+	}
 }
 
 
@@ -223,17 +285,24 @@ void CMFCApplication2Dlg::ImageProcessing(Mat matArray[10], Mat original)
 {
 	Mat gaussian;
 	GaussianBlur(original, gaussian, Size(5, 5), 7, 7, 4);
-	for (int i = 1; i <= 5; i++)
+	for (int i = 1; i <= 5; i++) {
+
 		medianBlur(gaussian, matArray[i], 5);
+		flip(matArray[i], matArray[i], 1); //mirroring the images
+	}
 	//apply gaussian blur to all of them except when no radio button is selected
 
 	matArray[0] = original;
-	//grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
+	grayscale(matArray[2], matArray[2]); //gues we dont really even need gray scale eh
 	HSV(matArray[3], matArray[3]);
 	CannyFunction(matArray[4], matArray[4]); //dont need....
 	ThresholdFunction(matArray[3], matArray[5]); //using the hsv image as the input array
-	if (someIndex == 6)
+	if (someIndex == 6) //put int a separate if statement because it took too long and unnecessary if we aren't using this
+	{
 		getBlueRectangle(matArray[5], matArray[4], matArray[6]);
+		flip(matArray[6], matArray[6], 1);
+	}
+		
 
 	//create function that iterates through each pixel in hsv image and find white pixels and floodfill the canny image.
 // soooo what this is saying is uh
